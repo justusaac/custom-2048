@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>2048</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+	--slide-duration:.1s;
+	--pop-duration:calc(var(--slide-duration));
+	--tile-size:100px;
+	--tile-margin:10px;
+}
+body{
+	background-color:navajowhite;
+}
+
+#GameContainer {
+	border-radius:10px;
+	max-width:fit-content;
+	margin-left: auto;
+	margin-right: auto;
+}
+#GameBoard{
+	height:500px;
+	width:500px;
+	background-color:darkgray;
+	border-radius:inherit;
+}
+#GameOver{
+	border-radius:inherit;
+	opacity:0;
+	position:absolute;
+	z-index:5;
+	visibility:hidden;
+	background-color:rgba(0.7,0.7,0.7,0.3);
+	font: bold 36px sans-serif;
+	display:flex;
+	justify-content:center;
+	align-items:center;
+	transition:
+		opacity .6s linear calc(.6s + calc(var(--slide-duration) + var(--pop-duration)));
+}
+#GameOver > div{
+
+	display:flex;
+	justify-content:center;
+	align-items:center;
+	flex-direction:column;
+	margin-left:auto;
+	margin-right:auto;
+}
+.Slot{
+	position:absolute;
+	height:var(--tile-size);
+	width:var(--tile-size);
+	border-radius:inherit;
+	background-color:lightgray;
+	z-index:1;
+}
+.Tile{
+	--number:'0';
+	--before-number:'0';
+	--before-opacity:0;
+	--after-opacity:1;
+	--number-transition-delay:var(--slide-duration);
+	display:inline-flex;
+	justify-content:center;
+	align-items:center;
+	font-family: sans-serif;
+	font-size: 2.5em;
+	/* property name | duration | easing function | delay */
+	transition:
+		background-color 0s linear var(--slide-duration),
+		color 0s linear var(--slide-duration),
+		box-shadow 0s linear var(--slide-duration),
+		translate var(--slide-duration) linear;
+	z-index:3;
+}
+.Tile:before,.Tile:after{
+	position:absolute;
+	transition:
+		opacity 0s linear var(--number-transition-delay);
+	z-index:4;
+		
+}
+
+.Tile:before{
+	opacity:var(--before-opacity);
+	content:var(--before-number);
+}
+.Tile:after{
+	opacity:var(--after-opacity);
+	content:var(--number);
+}
+.noslide{
+	transition:none !important;
+	animation:none !important;
+}
+.pop{
+	animation:var(--pop-duration) linear var(--slide-duration) pop !important;
+}
+.new{
+		/* duration | easing-function | delay | name */
+	animation:
+		var(--slide-duration) linear 0s hide,
+		var(--pop-duration) linear var(--slide-duration) grow;
+}
+@keyframes pop{
+	0%{
+		scale:1;
+	}
+	50%{
+		scale:1.1;
+	}
+	100%{
+		scale:1;
+	}
+}
+@keyframes hide{
+	0%{
+		scale:0;
+	}
+	100%{
+		scale:0;
+	}
+}
+@keyframes grow{
+	0%{
+		scale:0;
+	}
+	100%{
+		scale:1;
+	}
+}
+.restart{
+	opacity:1;
+	transition:
+		color .1s linear,
+		background-color .1s linear;
+}	
+.restart:hover{
+	color:#776E65;
+	background-color:#EEE4DA;
+}
+.restart,#score{
+	background-color:#776E65;
+	color:#EEE4DA;
+	font: bold 16px sans-serif;
+	margin:5px;
+	padding:5px;
+	border-radius:3px;
+	border:0px;
+}
+#score{
+	float:right;
+	--score:"0";
+	--delta:"0";
+
+}
+#score:after{
+	content:var(--score) " points";
+}
+#delta{
+	--number:"0";
+	position:absolute;
+	translate:0 10px;
+	opacity:0;
+	--delta-duration:calc((var(--slide-duration) + var(--pop-duration)) * 2);
+	transition:
+		translate var(--delta-duration) ease-in,
+		opacity var(--delta-duration) ease-in;
+}
+#delta:after{
+	content:"+" var(--number);
+	color:#BBCBBC;
+}
+#loading-container{
+	opacity:0;
+	transition: opacity var(--slide-duration) ease-in;
+}
+#loading,#loading-center, #loading-container{
+	width: 2em;
+	height: 2em;
+}
+#loading {
+	position:absolute;
+	background: conic-gradient(transparent,blue 0.5turn,transparent 0.5turn,red);
+	border-radius: 50%;
+	animation: spin 1.75s linear infinite;
+}
+#loading-center{
+	position:absolute;
+	background:radial-gradient(navajowhite 0%, navajowhite 45%, transparent 50%);
+}
+@keyframes spin {
+	0%{
+		rotate:0deg; 
+	}
+	100%{
+		rotate:360deg;
+	}
+}
+.controls, #ai-move{
+	display:inline-block;
+	background-color:darkgray;
+	color:white;
+	font: bold 16px sans-serif;
+	margin:5px;
+	padding:5px;
+	border-radius:3px;
+	border:0px;
+}
+#ai-move{
+	background-color:#6F6F6F;
+	color:white;
+	transition:
+		color .1s linear,
+		background-color .1s linear;
+}	
+#ai-move:hover{
+	background-color:lightgray;
+	color:#6F6F6F;
+}
+#checkcontainer{
+	border:1px solid black;
+	margin:10px;
+	--width:4;
+	display:inline-grid;
+	gap:0px;
+	grid-template-columns:repeat(var(--width),auto);
+	background-color:white
+}
+.check{
+	padding:0;
+	margin:0;
+	border:1px solid black;
+	width: 30px;
+	height: 30px;
+	appearance:none;
+}
+.check:checked{
+	background-color:orange;
+}
+.sizeinput,.probinput{
+	width:3em;
+}
+#probabilityinput{
+	border-collapse:collapse;
+	background-color:orange;
+	margin:10px;
+}
+#probabilityinput *{
+	font:16px sans-serif;
+	border:2px solid black;
+	text-align:center;
+	margin:3px;
+	padding:3px;
+}
+#adjust-row > td > button{
+	background-color:lightgray;
+	border-radius:3px;
+	width:40%;
+}
+#adjust-row > td > button:hover{
+	background-color:darkgray;
+}
+</style>
+<script>
+//Code for stripped down 2048 game with no graphics
+const copy_2d = (board)=>board.map(arr=>arr.slice())
+const equal_2d = (board1,board2)=>{
+	for(let r=0; r<board1.length;r++){
+		for(let c=0; c<board1[r].length; c++){
+			if(board1[r][c]!=board2[r][c]){
+				return false
+			}
+		}
+	}
+	return true
+}
+const Moves = Object.freeze({
+	UP: Symbol("Moves.UP"),
+	LEFT: Symbol("Moves.LEFT"),
+	DOWN: Symbol("Moves.DOWN"),
+	RIGHT: Symbol("Moves.RIGHT"),
+});
+const Phases = Object.freeze({
+	MOVE: Symbol("Phases.MOVE"),
+	SPAWN: Symbol("Phases.SPAWN"),
+});
+class Simulated2048{
+	constructor(board, probabilities, phase){
+		this.phase = phase
+		this.board = board
+		this.height = this.board.length
+		this.width = (this.board.length? this.board[0] : []).length
+		this.probabilities = probabilities
+		this.loss = false
+		this.history = []
+	}
+	undo(){
+		this.board = this.history.pop()
+		this.loss = false
+		this.phase = (this.phase==Phases.MOVE) ? Phases.SPAWN : Phases.MOVE
+	}
+	get_number(row,column){
+		return (row<0 || row>=this.height) ? undefined : this.board[row][column]
+	}
+	move(move){
+
+		this.history.push(copy_2d(this.board))
+		this.phase = Phases.SPAWN;
+
+		let r,c
+		//Offsetscale is the direction that is traveled when emptying the stack of tiles
+		let offsetscale_r=0,offsetscale_c=0
+		//These are functions that form the conditions of a for loop
+		let outer_a,outer_b,outer_c,inner_a,inner_b,inner_c
+		if(move==Moves.UP){
+			offsetscale_r = 1
+			outer_a = ()=>c=0
+			outer_b = ()=>c<this.width
+			outer_c = ()=>c++
+			inner_a = ()=>r=this.height-1
+			inner_b = ()=>r>=-1
+			inner_c = ()=>r--
+		}
+		else if(move==Moves.LEFT){
+			offsetscale_c = 1
+			outer_a = ()=>r=0
+			outer_b = ()=>r<this.height
+			outer_c = ()=>r++
+			inner_a = ()=>c=this.width-1
+			inner_b = ()=>c>=-1
+			inner_c = ()=>c--
+		}
+		else if(move==Moves.DOWN){
+			offsetscale_r = -1
+			outer_a = ()=>c=0
+			outer_b = ()=>c<this.width
+			outer_c = ()=>c++
+			inner_a = ()=>r=0
+			inner_b = ()=>r<=this.height
+			inner_c = ()=>r++
+		}
+		else if(move==Moves.RIGHT){
+			offsetscale_c = -1
+			outer_a = ()=>r=0
+			outer_b = ()=>r<this.height
+			outer_c = ()=>r++
+			inner_a = ()=>c=0
+			inner_b = ()=>c<=this.width
+			inner_c = ()=>c++
+		}
+
+
+		for(outer_a();outer_b();outer_c()){
+			let stack = []
+			for(inner_a();inner_b();inner_c()){
+				//Empty the stack when hitting a wall
+				if(this.get_number(r,c) === undefined){
+					let prev_combine = false
+					for(let offset = 1; stack.length>0; offset++){
+						let n = stack.pop()
+						let prev_row = r+offsetscale_r*(offset-1)
+						let prev_col = c+offsetscale_c*(offset-1)
+						if(!prev_combine && this.get_number(prev_row,prev_col)==n){
+							this.board[prev_row][prev_col] += n
+							prev_combine = true
+							offset--
+						}
+						else{
+							this.board[prev_row+offsetscale_r][prev_col+offsetscale_c] = n
+							prev_combine = false
+						}
+					}
+				}
+				//Pick up a tile if there's one
+				else if(this.get_number(r,c) !== null){
+					stack.push(this.board[r][c])
+					this.board[r][c] = null
+				}
+			}
+		}
+		if(!equal_2d(this.board,this.history[this.history.length-1])){
+			return true;
+		}
+		return false;
+	}
+	spawn_tile(row,col,number){
+		this.history.push(copy_2d(this.board))
+		this.phase = Phases.MOVE;
+		if(this.board[row][col]!==null){
+			return false
+		}
+		this.board[row][col] = number
+		this.check_loss()
+		return true
+	}
+	spawn_tile_random(){
+		let positions = []
+		for(let r=0; r<this.height; r++){
+			for(let c=0; c<this.width; c++){
+				if(this.board[r][c]===null){
+					positions.push({row:r,col:c})
+				}
+			}
+		}
+		if(positions.length==0){
+			return false
+		}
+		let choice = positions[Math.floor(Math.random()*positions.length)]
+		let new_number = 0
+		let rand = Math.random()
+		for(let [n,prob] of this.probabilities){
+			new_number = n
+			if(rand<=prob){
+				break
+			}
+		}
+		return spawn_tile(choice.row,choice.col,new_number)
+	}
+	check_loss(){
+		for(let r=0; r<this.height;r++){
+			for(let c=0;c<this.width;c++){
+				let n = this.get_number(r,c)
+				if(n===undefined || n===null){
+					continue
+				}
+				for(let [r2,c2] of [[r-1,c],[r,c-1],[r,c+1],[r+1,c]]){
+					let n2 = this.get_number(r2,c2)
+					if(n2===n || n2===null){
+						this.loss = false
+						return
+					}
+				}
+			}
+		}
+		this.loss = true
+	}
+	evaluate(){
+		let score = 0
+		let empty = 0
+		let max = 0
+		let r,c
+		let x = [()=>r=0,()=>c=0]
+		let y = [()=>r<this.height,()=>c<this.width]
+		let z = [()=>r++,()=>c++]
+		for(let vertical of [false,true]){
+			for(x[+vertical]();y[+vertical]();z[+vertical]()){
+				let prev=0;
+				let total=0;
+				for(x[+!vertical]();y[+!vertical]();z[+!vertical]()){
+					let tile = this.board[r][c]
+					if(tile===undefined){
+						prev=0
+					}
+					else if(tile===null){
+						empty++;
+					}
+					else if(tile!==NaN){
+						if(prev!==0){
+							total += tile-prev
+						}
+						prev = tile
+						max = Math.max(Math.abs(tile), max)
+					}
+				}
+				score += Math.abs(total)
+			}
+		}
+		let min_tile = Math.min(...this.probabilities.map(([x,y])=>Math.abs(x)))
+		let total_score = score*(empty+1)*Math.log2(max * 2/min_tile)
+		if(this.loss){
+			total_score = 1-(1/total_score)
+		}
+		return total_score
+	}
+	select_move(depth=3){
+		return this.alpha_beta(-Infinity,Infinity,depth).move
+	}
+	alpha_beta(alpha,beta,depth){
+		let best_value,best_move
+		if(this.loss || depth==0){
+			best_value = this.evaluate()
+		}
+		else if(this.phase == Phases.MOVE){
+			best_value = -Infinity
+			for(let move of Object.values(Moves)){
+
+				if(this.move(move)){
+					let val = this.alpha_beta(alpha,beta,depth).value
+					if(val>best_value || best_move===undefined || (val==best_value && Math.random()<.5)){
+						best_value = val
+						best_move = move
+					}
+					alpha = Math.max(alpha, val)
+				}
+				this.undo()
+				if(best_value >= beta){
+					break
+				}
+			}
+		}
+		else if(this.phase == Phases.SPAWN){
+			best_value = Infinity
+			for(let row=0; row<this.height; row++){
+			for(let col=0; col<this.width; col++){
+			for(let [n,] of (this.probabilities.length? this.probabilities : [[0,0]])){
+				let move = {row:row,col:col,number:n}
+				if(this.spawn_tile(row,col,n)){
+					let val = this.alpha_beta(alpha,beta,depth-1).value
+					if(val<best_value || best_move===undefined || (val==best_value && Math.random()<.5)){
+						best_value = val
+						best_move = move
+					}
+					beta = Math.min(beta, val)
+				}
+				this.undo()
+				if(best_value <= alpha){
+					break
+				}
+			}
+			}
+			}
+		}
+		return {move:best_move,value:best_value}
+	}
+
+}
+
+
+/*----------------------------------------
+Code for the actual 2048 game that you see
+----------------------------------------*/
+var boardWidth = 4
+var boardHeight = 4
+
+var game_lost = false
+
+var awaiting_ai = false
+/*
+Representation of the game board (stored in numbers):
+undefined -> wall
+null -> empty slot
+number -> tile with that number
+*/
+var numbers = []
+var tileDivs = []
+var to_be_deleted = []
+var probabilities = []
+
+//Touchscreen stuff
+var swipe_origin
+var swipe_vector = {x:0,y:0}
+var multi_swipe = false
+document.addEventListener('touchstart', (event)=>{
+	if(event.touches.length>1){
+		multi_swipe = true
+	}
+	if(multi_swipe || !checkTouchTarget(event)){
+		return
+	}
+	swipe_origin = event.touches[0]
+	swipe_vector = {x:0, y:0}
+}) 
+document.addEventListener('touchmove', (event)=>{
+	if(multi_swipe || !checkTouchTarget(event)){
+		swipe_vector = {x:0, y:0}
+		return
+	}
+	event.preventDefault()
+	let swipe_end = event.touches[0]
+	swipe_vector = {
+		x:swipe_end.clientX-swipe_origin.clientX,
+		y:swipe_end.clientY-swipe_origin.clientY,
+	}
+},{passive:false})
+document.addEventListener('touchend', (event)=>{
+	if(event.touches.length==0){
+		multi_swipe = false
+	}
+	if(multi_swipe || !checkTouchTarget(event)){
+		return
+	}
+	if(swipe_vector.x**2+swipe_vector.y**2<=5){
+		return
+	}
+	let swipe_direction
+	if(Math.abs(swipe_vector.x)>Math.abs(swipe_vector.y)){
+		if(swipe_vector.x>0){
+			swipe_direction=Moves.RIGHT
+		}
+		else{
+			swipe_direction=Moves.LEFT
+		}
+	}
+	else{
+		if(swipe_vector.y>0){
+			swipe_direction=Moves.DOWN
+		}
+		else{
+			swipe_direction=Moves.UP
+		}
+	}
+	move(swipe_direction)	
+})
+function checkTouchTarget(event){
+	return document.getElementById('GameBoard').contains(event.target)
+}
+
+//Arrow key/WASD controls
+document.addEventListener("keydown",(event)=>{
+	if(event.code.startsWith("Arrow")){
+		event.preventDefault()
+	}
+})
+document.addEventListener("keydown", (event)=>{
+	let mapping = {
+		'KeyW':Moves.UP,
+		'ArrowUp':Moves.UP,
+		'KeyA':Moves.LEFT,
+		'ArrowLeft':Moves.LEFT,
+		'KeyS':Moves.DOWN,
+		'ArrowDown':Moves.DOWN,
+		'KeyD':Moves.RIGHT,
+		'ArrowRight':Moves.RIGHT,
+	}
+	if(mapping[event.code]){
+		move(mapping[event.code])
+	}
+})
+function move(direction){
+	if(awaiting_ai){
+		return
+	}
+	let r,c
+	//Offsetscale is the direction that is traveled when emptying the stack of tiles
+	let offsetscale_r=0,offsetscale_c=0
+	//These are functions that form the conditions of a for loop
+	let outer_a,outer_b,outer_c,inner_a,inner_b,inner_c
+	if(direction==Moves.UP){
+		offsetscale_r = 1
+		outer_a = ()=>c=0
+		outer_b = ()=>c<boardWidth
+		outer_c = ()=>c++
+		inner_a = ()=>r=boardHeight-1
+		inner_b = ()=>r>=-1
+		inner_c = ()=>r--
+	}
+	else if(direction==Moves.LEFT){
+		offsetscale_c = 1
+		outer_a = ()=>r=0
+		outer_b = ()=>r<boardHeight
+		outer_c = ()=>r++
+		inner_a = ()=>c=boardWidth-1
+		inner_b = ()=>c>=-1
+		inner_c = ()=>c--
+	}
+	else if(direction==Moves.DOWN){
+		offsetscale_r = -1
+		outer_a = ()=>c=0
+		outer_b = ()=>c<boardWidth
+		outer_c = ()=>c++
+		inner_a = ()=>r=0
+		inner_b = ()=>r<=boardHeight
+		inner_c = ()=>r++
+	}
+	else if(direction==Moves.RIGHT){
+		offsetscale_c = -1
+		outer_a = ()=>r=0
+		outer_b = ()=>r<boardHeight
+		outer_c = ()=>r++
+		inner_a = ()=>c=0
+		inner_b = ()=>c<=boardWidth
+		inner_c = ()=>c++
+	}
+	else{
+		throw new Error(`${direction} is not a valid move`);
+	}
+
+	clear_unused_tiles()
+	let any_move = false
+	let delta = 0
+	for(outer_a();outer_b();outer_c()){
+		let stack = []
+		let stack_divs = []
+		for(inner_a();inner_b();inner_c()){
+			//Empty the stack when hitting a wall
+			if(getNumber(r,c) === undefined){
+				let prev_combine = false
+				for(let offset = 1; stack.length>0; offset++){
+					let n = stack.pop()
+					let tile = stack_divs.pop()
+					//Completes an ongoing transition
+					updateDOMElement_instant(tile)
+					let prev_row = r+offsetscale_r*(offset-1)
+					let prev_col = c+offsetscale_c*(offset-1)
+
+					if(!prev_combine && getNumber(prev_row,prev_col)==n){
+						numbers[prev_row][prev_col] += n
+						any_move = true
+						prev_combine = true
+						offset--
+
+						tile.style.setProperty('z-index',2)
+						tile.style.setProperty('box-shadow','none')
+						to_be_deleted.push(tile)
+
+						shiftDOMElement(tile,prev_row,prev_col)
+						tile = tileDivs[prev_row][prev_col]
+						numberDOMElement(tile, numbers[prev_row][prev_col])
+						tile.classList.add('pop')
+
+						delta+=n+n
+					}
+					else{
+						let new_row = r+offsetscale_r*offset
+						let new_col = c+offsetscale_c*offset
+						numbers[new_row][new_col] = n
+						tileDivs[new_row][new_col] = tile
+						prev_combine = false
+
+						if(tile.getAttribute('data-row')!=new_row || tile.getAttribute('data-col')!=new_col){
+							any_move = true
+						}
+					
+						tile.setAttribute('data-col',new_col)
+						tile.setAttribute('data-row',new_row)
+						shiftDOMElement(tile,new_row,new_col)
+					}
+				}
+			}
+			//Pick up a tile if there's one
+			else if(numbers[r][c] !== null){
+				stack.push(numbers[r][c])
+				numbers[r][c] = null
+				stack_divs.push(tileDivs[r][c])
+				tileDivs[r][c] = undefined
+			}
+		}
+	}
+	if(delta){
+		increaseScore(delta)
+	}
+	if(any_move){
+		spawnTile()
+	}
+}
+function spawnTile(){
+	if(document.getElementById('ai-tile').checked){
+		if(document.getElementById("ai-auto").checked){
+			let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.SPAWN)).select_move()
+			addTile(choice)
+			if(!game_lost){
+				AIMove()
+			}
+		}
+		else{
+			await_ai();
+			setTimeout(()=>{
+				let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.SPAWN)).select_move()
+				addTile(choice)
+				receive_ai()
+			}, 1)
+		}
+	}
+	else{
+		let positions = []
+		for(let r=0; r<boardHeight; r++){
+			for(let c=0; c<boardWidth; c++){
+				if(numbers[r][c]===null){
+					positions.push({row:r,col:c})
+				}
+			}
+		}
+		if(positions.length==0){
+			return
+		}
+		let choice = positions[Math.floor(Math.random()*positions.length)]
+		choice.number=0
+		let rand = Math.random()
+		for(let [n,prob] of probabilities){
+			choice.number = n
+			if(rand<=prob){
+				break
+			}
+		}
+		addTile(choice)
+
+		if(!game_lost && document.getElementById("ai-auto").checked){
+			AIMove()
+		}
+	}
+}
+function addTile(choice){
+	numbers[choice.row][choice.col] = choice.number
+	let tile = document.createElement('div')
+	tileDivs[choice.row][choice.col] = tile
+
+	numberDOMElement(tile,choice.number)
+	tile.classList.add('Slot','Tile','new')
+	tile.setAttribute('data-col',choice.col)
+	tile.setAttribute('data-row',choice.row)
+	shiftDOMElement(tile,choice.row,choice.col)
+	document.getElementById("GameBoard").appendChild(tile)
+
+	checkLoss()
+}
+function lose(){
+	game_lost = true
+	let over = document.getElementById('GameOver')
+	over.style.setProperty('visibility','visible')
+	over.style.setProperty('opacity','1')
+}
+function checkLoss(){
+	for(let r=0; r<boardHeight;r++){
+		for(let c=0;c<boardWidth;c++){
+			let n = getNumber(r,c)
+			if(n===undefined || n===null){
+				continue
+			}
+			for(let [r2,c2] of [[r-1,c],[r,c-1],[r,c+1],[r+1,c]]){
+				let n2 = getNumber(r2,c2)
+				if(n2===n || n2===null){
+					return false
+				}
+			}
+		}
+	}
+	lose()
+	return true
+}
+function getNumber(row,column){
+	return (row<0 || row>=boardHeight) ? undefined : numbers[row][column]
+}
+
+
+function updateDOMElement_instant(tile,row,col){
+	let number_content = tile.style.getPropertyValue('--number')
+	let num = +number_content.slice(1,-1)
+	tile.classList.add('noslide')
+	shiftDOMElement(tile,tile.getAttribute('data-row'),tile.getAttribute('data-col'))
+	tile.style.setProperty('--before-number',number_content)
+	colorDOMElement(tile,num)
+	tile.offsetHeight
+	tile.classList.remove('noslide','new','pop')
+}
+
+function getOffset(num){
+	let cssGlobals = getComputedStyle(document.documentElement)
+	let tileSize_px = parseInt(cssGlobals.getPropertyValue('--tile-size'))
+	let tileMargin_px = parseInt(cssGlobals.getPropertyValue('--tile-margin'))
+	return ((num*(tileSize_px+tileMargin_px))+tileMargin_px)+'px'
+}
+function shiftDOMElement(tile, row,col){
+	tile.style.translate =getOffset(col)+' '+getOffset(row)
+}
+
+function numberDOMElement(tile,new_number){
+	tile.style.setProperty('--before-number',tile.style.getPropertyValue("--number"))
+	tile.style.setProperty('--number','"'+new_number+'"')
+	//TODO shrink font-size if new_number is too long
+	tile.style.setProperty('--number-transition-delay','0s')
+	tile.style.setProperty('--before-opacity',1)
+	tile.style.setProperty('--after-opacity',0)
+	tile.offsetHeight
+	tile.style.setProperty('--number-transition-delay','var(--slide-duration)')
+	tile.style.setProperty('--before-opacity',0)
+	tile.style.setProperty('--after-opacity',1)
+
+	colorDOMElement(tile,new_number)
+}
+
+const colors = {}
+//I'm using 255 rather than 256 because when you get really big floating pt numbers they are always divisible by 256
+const mod_255_pos = (a)=> (((a%255)+255)%255)
+function getRGB(num){
+	if(colors[num]){
+		return colors[num]
+	}
+	let r,g,b
+	if(num>=128 && num<4096){
+		r=237
+		g=209.137-0.01746*num+0.000005*(num**2)
+		b=44.117+84.96*Math.E**(-0.00162*num)
+	}
+	else{
+		r=234.5+1.37*num-0.0445*(num**2)+0.0004*(num**3)
+		g=252.04-10.306*num+0.2722*(num**2)-0.0023365*(num**3)
+		b=254.312-18.7*num+0.61755*(num**2)-0.00583*(num**3)
+	}
+	return (colors[num] = {r:mod_255_pos(r),g:mod_255_pos(g),b:mod_255_pos(b)})
+}
+function colorDOMElement(tile, num){
+	let color = getRGB(num)
+	tile.style.setProperty('background-color',`rgb(${color.r},${color.g},${color.b})`)
+	let number_dark = color.r+color.g+color.b > 600
+	tile.style.setProperty('color',number_dark ? 'rgb(119, 110, 101)' : 'rgb(249, 246, 242)')
+	if(num>=256){
+		tile.style.setProperty('box-shadow',`0px 0px 30px var(--tile-margin) rgba(${color.r},${color.g},${color.b},.5)`)
+	}
+}
+
+var score = 0
+function increaseScore(delta){
+	setScore(score+delta)
+	let elem = document.getElementById("delta")
+	elem.classList.add('noslide')
+	elem.style.setProperty("--number","'"+delta+"'")
+	elem.style.setProperty("translate","0 10px")
+	elem.style.setProperty("opacity","1")
+	elem.offsetHeight
+	elem.classList.remove('noslide')
+	elem.style.setProperty("translate","0 -30px")
+	elem.style.setProperty("opacity","0")
+
+}
+function setScore(points){
+	score = points
+	document.getElementById('score').style.setProperty('--score','"'+score+'"')
+}
+
+function clear_unused_tiles(){
+	while(to_be_deleted.length>0){
+		to_be_deleted.pop().remove()
+	}
+}
+function newGame(){
+	let height = parseInt(document.getElementById("height").value)
+	if(height>=0){
+		boardHeight = height
+	}
+	let width = parseInt(document.getElementById("width").value)
+	if(width>=0){
+		boardWidth = width
+	}
+
+	probabilities = buildProbabilityDistribution()
+
+	let over = document.getElementById('GameOver')
+	over.classList.add('noslide')
+	over.style.setProperty('visibility','hidden')
+	over.style.setProperty('opacity','0')
+	over.offsetHeight
+	over.classList.remove('noslide')
+
+	clear_unused_tiles()
+	tileDivs.length = boardHeight
+	numbers.length = boardHeight
+	let checkboxes = document.querySelectorAll('#checkcontainer > .check')
+	for(let arr of [tileDivs,numbers]){
+		for(let i=0; i<numbers.length; i++){
+			arr[i] = []
+			arr[i].length = boardWidth
+			for(let j=0; j<arr[i].length; j++){
+				arr[i][j] = checkboxes[i*boardWidth+j].checked ? null : undefined
+			}
+		}
+		
+	}
+	
+	let board = document.getElementById("GameBoard")
+	board.textContent = ''
+	board.style.height = getOffset(boardHeight)
+	board.style.width = getOffset(boardWidth)
+	for(let i=0; i<boardHeight; i++){
+		for(let j=0; j<boardWidth; j++){
+			if(numbers[i][j]===undefined){
+				continue
+			}
+			let slot = document.createElement('div')
+			slot.classList.add('Slot')
+			shiftDOMElement(slot,i,j)
+			board.appendChild(slot)
+		}
+	}
+	let gameover = document.getElementById("GameOver")
+	gameover.style.height = board.style.height
+	gameover.style.width = board.style.width
+	setScore(0)
+
+	game_lost=true
+	let initial_tiles_spawn = 2
+	for(let i=0; i<initial_tiles_spawn-1; i++){
+		spawnTile()
+	}
+	game_lost=false
+	spawnTile()
+	if(document.getElementById("ai-auto").checked){
+		AIMove()
+	}
+}
+
+function makeCheckbox(){
+	let tile = document.createElement('input')
+	tile.classList.add('check')
+	tile.type="checkbox"
+	tile.checked = true
+	return tile
+}
+function adjustLayoutInput(change_height = true){
+	let height = parseInt(document.getElementById("height").value)
+	let width = parseInt(document.getElementById("width").value)
+	if(!(height>=0 && width>=0)){
+		throw new Error('Bad board dimensions')
+	}
+	let grid = document.getElementById("checkcontainer")
+	grid.style.setProperty('--width',width)
+	let old_width = grid.childElementCount/height
+	if(isNaN(old_width)){
+		old_width=0
+	}
+	if(change_height || old_width == 0){
+		while(grid.childElementCount>height*width){
+			grid.removeChild(grid.lastChild)
+		}
+		while(grid.childElementCount<height*width){
+			grid.appendChild(makeCheckbox())
+		}
+	}
+	else {
+		if(grid.childElementCount>height*width){
+			let selectors = []
+			for(let i=width+1; i<=old_width; i++){
+				selectors.push(`.check:nth-child(${old_width}n+${i})`)
+			}
+			for(let elem of document.querySelectorAll(selectors.join(','))){
+				grid.removeChild(elem)
+			}
+		}
+		else{
+			for(let elem of document.querySelectorAll(`.check:nth-child(${old_width}n)`)){
+				let new_tiles = []
+				for(let i=0; i<width-old_width; i++){
+					new_tiles.push(makeCheckbox())
+				}
+				elem.after(...new_tiles)
+			}
+		}
+	}
+}
+function enforceWholeNumber(event){
+	if(!(['Backspace','Delete','Tab'].includes(event.key) || !isNaN(+event.key) || (event.ctrlKey && ['a'].includes(event.key)))){
+		event.preventDefault();
+	}
+}
+function enforcePositiveFloat(event){
+	if(!['.'].includes(event.key)){
+		enforceWholeNumber(event)
+	}
+}
+function enforceFloat(event){
+	if(!['-'].includes(event.key)){
+		enforcePositiveFloat(event)
+	}
+}
+function resetLayout(){
+	for( let elem of document.getElementsByClassName('check')){
+		elem.checked = true
+	}
+}
+function addTileRow(){
+	let row = document.getElementById('probability-row').cloneNode(true)
+	row.removeAttribute('id')
+	row.children[0].firstChild.value = 0
+	row.children[1].firstChild.value = 0
+	document.getElementById('adjust-row').before(row)
+}
+function removeTileRow(){
+	let row = document.getElementById('adjust-row').previousElementSibling
+	if(row && !row.id){
+		row.remove()
+		return true
+	}
+	return false
+}
+function defaultTileProbability(){
+	while(removeTileRow()){	
+	}
+	addTileRow()
+	let inputs = document.getElementsByClassName('probinput')
+	inputs[0].value = 2
+	inputs[1].value = 90
+	inputs[2].value = 4
+	inputs[3].value = 10
+}
+function buildProbabilityDistribution(){
+	let cumulative_probability = 0
+	let distribution = []
+	let inputs = document.getElementsByClassName('probinput')
+	for(let i=0; i<inputs.length; i+=2){
+		let number = parseFloat(inputs[i].value)
+		let prob=parseFloat(inputs[i+1].value)
+		if(!isFinite(prob) || prob<=0){
+			continue
+		}
+		cumulative_probability += prob
+		distribution.push([number,cumulative_probability])
+	}
+	for(let i=0; i<distribution.length; i++){
+		distribution[i][1] /= cumulative_probability
+	}
+	return distribution
+}
+function AIMove(){
+	if(game_lost){
+		return
+	}
+	if(document.getElementById("ai-auto").checked){
+		await_ai()
+		setTimeout(()=>{
+			let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.MOVE)).select_move()
+			receive_ai()
+			move(choice)
+		},1)
+	}
+	else{
+		let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.MOVE)).select_move()
+		move(choice)
+	}
+}
+function await_ai(){
+	awaiting_ai = true
+	let elem = document.getElementById("loading-container")
+	elem.classList.add('noslide')
+	elem.style.opacity = 1
+	elem.offsetHeight
+	elem.classList.remove('noslide')
+}
+function receive_ai(){
+	awaiting_ai = false
+	let elem = document.getElementById("loading-container")
+	elem.style.opacity = 0
+}
+
+window.addEventListener("load",(event)=>{
+	adjustLayoutInput()
+	defaultTileProbability()
+	newGame()
+})
+</script>
+
+</head>
+<body> 
+	<div id="GameContainer">
+		<input type="button" value="New game" onclick="newGame()" class="restart">
+		<span id="loading-container"><span id="loading"></span><span id="loading-center"></span></span>
+		<div id="score"><div id="delta"></div></div>
+		<div id="GameOver">
+			<div>
+				Game Over
+				<br>
+				<input type="button" value="Try again" onclick="newGame()" class="restart"> 
+			</div>
+		</div>
+		<div id="GameBoard"></div>
+	</div>
+	<hr>
+	<div class="controls">
+		<input type="button" id="ai-move" value="AI move" onclick="AIMove()"> 
+		<input type="checkbox" id="ai-auto" autocomplete="off">
+		<label for="ai-auto">AI autoplay</label>
+		<br>
+		<input type="checkbox" id="ai-tile" autocomplete="off">
+		<label for="ai-tile">Adversarial tile generation (hard mode)</label>
+	</div>
+	<hr>
+	<div class="controls">
+		<label for="height">Height</label>
+		<input type="number" value=4 min=0 step=1 class="sizeinput" id="height" onchange="adjustLayoutInput(true)" autocomplete="off" onkeydown="enforceWholeNumber(event)">
+		<label for="width">Width</label>
+		<input type="number" value=4 min=0 step=1 class="sizeinput" id="width" onchange="adjustLayoutInput(false)" autocomplete="off" onkeydown="enforceWholeNumber(event)">
+	</div>
+	<br>
+	<div class="controls">
+		Layout
+		<input type="button" value="Reset" onclick="resetLayout()" class="restart"> 
+	</div>
+	<br>
+	<div id="checkcontainer">
+	</div>
+	<br>
+	<div class="controls">
+		Tile probability
+		<input type="button" value="Reset" onclick="defaultTileProbability()" class="restart">
+	</div>
+	<table id="probabilityinput">
+		<tr id="header-row">
+			<th>Number</th>
+			<th>Weight</th>
+		</tr>
+		<tr class="probability-row" id="probability-row">
+			<td><input type="number" value=0 step=1 class="probinput" autocomplete="off" onkeydown="enforceFloat(event)"></td>
+			<td><input type="number" value=0 min=0 step=1 class="probinput" autocomplete="off" onkeydown="enforcePositiveFloat(event)"></td>
+		</tr>
+		<tr id="adjust-row">
+			<td colspan=2>
+				<button onclick="removeTileRow()">-</button>
+				<button onclick="addTileRow();this.scrollIntoView()">+</button>
+			</td>
+		</tr>
+	</table>
+	
+</body>
+</html>

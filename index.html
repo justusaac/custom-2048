@@ -420,7 +420,7 @@ class Simulated2048{
 				break
 			}
 		}
-		return spawn_tile(choice.row,choice.col,new_number)
+		return this.spawn_tile(choice.row,choice.col,new_number)
 	}
 	check_loss(){
 		for(let r=0; r<this.height;r++){
@@ -441,45 +441,58 @@ class Simulated2048{
 		this.loss = true
 	}
 	evaluate(){
+		const signed_log = (n)=>(Math.sign(n)*(Math.log2(Math.abs(n))))
 		let score = 0
 		let empty = 0
 		let max = 0
+		let copy_mult = 1
 		let r,c
 		let x = [()=>r=0,()=>c=0]
 		let y = [()=>r<this.height,()=>c<this.width]
 		let z = [()=>r++,()=>c++]
 		for(let vertical of [false,true]){
 			for(x[+vertical]();y[+vertical]();z[+vertical]()){
-				let prev=0;
+				let prev=null;
 				let total=0;
 				for(x[+!vertical]();y[+!vertical]();z[+!vertical]()){
 					let tile = this.board[r][c]
 					if(tile===undefined){
-						prev=0
+						prev=null
 					}
 					else if(tile===null){
 						empty++;
 					}
 					else if(tile!==NaN){
-						if(prev!==0){
-							total += tile-prev
+						if(prev!==null){
+							total += signed_log(tile)-signed_log(prev)
 						}
 						prev = tile
-						max = Math.max(Math.abs(tile), max)
+						let abs = Math.abs(tile)
+						if(abs==max){
+							copy_mult=1.5
+						}
+						if(abs>max){
+							max = abs
+							copy_mult = 1
+						}
 					}
 				}
 				score += Math.abs(total)
 			}
 		}
 		let min_tile = Math.min(...this.probabilities.map(([x,y])=>Math.abs(x)))
-		let total_score = score*(empty+1)*Math.log2(max * 2/min_tile)
 		if(this.loss){
-			total_score = 1-(1/total_score)
+			return min_tile-(min_tile/max)
+		}
+		let total_score = score*Math.log2(max * 2/min_tile)*(empty+1)
+		if(isNaN(total_score)){
+			return 0
 		}
 		return total_score
 	}
-	select_move(depth=3){
-		return this.alpha_beta(-Infinity,Infinity,depth).move
+	select_move(adversarial=true){
+		const depth = 3
+		return (adversarial ? this.alpha_beta(-Infinity,Infinity,depth) : this.monte_carlo(depth)).move
 	}
 	alpha_beta(alpha,beta,depth){
 		let best_value,best_move
@@ -528,7 +541,33 @@ class Simulated2048{
 		}
 		return {move:best_move,value:best_value}
 	}
-
+	monte_carlo(depth){
+		let best_value,best_move
+		if(this.loss || depth==0){
+			best_value = this.evaluate()
+		}
+		else{
+			best_value = -Infinity
+			for(let move of Object.values(Moves)){
+				if(this.move(move)){
+					let eval_total = 0
+					const eval_count = 10
+					for(let i=0; i<eval_count; i++){
+						this.spawn_tile_random()
+						eval_total += this.monte_carlo(depth-1).value
+						this.undo()
+					}
+					let eval_expected = eval_total/eval_count
+					if(eval_expected>best_value){
+						best_move = move
+						best_value = eval_expected
+					}
+				}
+				this.undo()
+			}
+		}
+		return {move:best_move,value:best_value}
+	}
 }
 
 
@@ -752,7 +791,7 @@ function move(direction){
 function spawnTile(){
 	if(document.getElementById('ai-tile').checked){
 		if(document.getElementById("ai-auto").checked){
-			let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.SPAWN)).select_move()
+			let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.SPAWN)).select_move(true)
 			addTile(choice)
 			if(!game_lost){
 				AIMove()
@@ -761,7 +800,7 @@ function spawnTile(){
 		else{
 			await_ai();
 			setTimeout(()=>{
-				let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.SPAWN)).select_move()
+				let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.SPAWN)).select_move(true)
 				addTile(choice)
 				receive_ai()
 			}, 1)
@@ -1109,16 +1148,17 @@ function AIMove(){
 	if(game_lost){
 		return
 	}
+	let adversarial = document.getElementById('ai-tile').checked
 	if(document.getElementById("ai-auto").checked){
 		await_ai()
 		setTimeout(()=>{
-			let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.MOVE)).select_move()
+			let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.MOVE)).select_move(adversarial)
 			receive_ai()
 			move(choice)
 		},1)
 	}
 	else{
-		let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.MOVE)).select_move()
+		let choice = (new Simulated2048(copy_2d(numbers),probabilities,Phases.MOVE)).select_move(adversarial)
 		move(choice)
 	}
 }

@@ -319,40 +319,24 @@ class Simulated2048{
 		//These are functions that form the conditions of a for loop
 		let outer_a,outer_b,outer_c,inner_a,inner_b,inner_c
 		if(move==Moves.UP){
-			offsetscale_r = 1
-			outer_a = ()=>c=0
-			outer_b = ()=>c<this.width
-			outer_c = ()=>c++
-			inner_a = ()=>r=this.height-1
-			inner_b = ()=>r>=-1
-			inner_c = ()=>r--
+			offsetscale_r = 1;
+			[outer_a,outer_b,outer_c] = [()=> c=0 ,()=> c<this.width ,()=> c++];
+			[inner_a,inner_b,inner_c] = [()=> r=this.height-1 ,()=> r>=-1 ,()=> r--];
 		}
 		else if(move==Moves.LEFT){
-			offsetscale_c = 1
-			outer_a = ()=>r=0
-			outer_b = ()=>r<this.height
-			outer_c = ()=>r++
-			inner_a = ()=>c=this.width-1
-			inner_b = ()=>c>=-1
-			inner_c = ()=>c--
+			offsetscale_c = 1;
+			[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<this.height ,()=> r++];
+			[inner_a,inner_b,inner_c] = [()=> c=this.width-1 ,()=> c>=-1 ,()=> c--];
 		}
 		else if(move==Moves.DOWN){
-			offsetscale_r = -1
-			outer_a = ()=>c=0
-			outer_b = ()=>c<this.width
-			outer_c = ()=>c++
-			inner_a = ()=>r=0
-			inner_b = ()=>r<=this.height
-			inner_c = ()=>r++
+			offsetscale_r = -1;
+			[outer_a,outer_b,outer_c] = [()=> c=0 ,()=> c<this.width ,()=> c++];
+			[inner_a,inner_b,inner_c] = [()=> r=0 ,()=> r<=this.height ,()=> r++];
 		}
 		else if(move==Moves.RIGHT){
-			offsetscale_c = -1
-			outer_a = ()=>r=0
-			outer_b = ()=>r<this.height
-			outer_c = ()=>r++
-			inner_a = ()=>c=0
-			inner_b = ()=>c<=this.width
-			inner_c = ()=>c++
+			offsetscale_c = -1;
+			[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<this.width ,()=> r++];
+			[inner_a,inner_b,inner_c] = [()=> c=0 ,()=> c<=this.width ,()=> c++];
 		}
 
 
@@ -447,9 +431,9 @@ class Simulated2048{
 		let max = 0
 		let copy_mult = 1
 		let r,c
-		let x = [()=>r=0,()=>c=0]
-		let y = [()=>r<this.height,()=>c<this.width]
-		let z = [()=>r++,()=>c++]
+		let x = [()=> r=0 ,()=> c=0]
+		let y = [()=> r<this.height ,()=> c<this.width]
+		let z = [()=> r++ ,()=> c++]
 		for(let vertical of [false,true]){
 			for(x[+vertical]();y[+vertical]();z[+vertical]()){
 				let prev=null;
@@ -681,45 +665,29 @@ function move(direction){
 	//These are functions that form the conditions of a for loop
 	let outer_a,outer_b,outer_c,inner_a,inner_b,inner_c
 	if(direction==Moves.UP){
-		offsetscale_r = 1
-		outer_a = ()=>c=0
-		outer_b = ()=>c<boardWidth
-		outer_c = ()=>c++
-		inner_a = ()=>r=boardHeight-1
-		inner_b = ()=>r>=-1
-		inner_c = ()=>r--
+		offsetscale_r = 1;
+		[outer_a,outer_b,outer_c] = [()=> c=0 ,()=> c<boardWidth ,()=> c++];
+		[inner_a,inner_b,inner_c] = [()=> r=boardHeight-1 ,()=> r>=-1 ,()=> r--];
 	}
 	else if(direction==Moves.LEFT){
-		offsetscale_c = 1
-		outer_a = ()=>r=0
-		outer_b = ()=>r<boardHeight
-		outer_c = ()=>r++
-		inner_a = ()=>c=boardWidth-1
-		inner_b = ()=>c>=-1
-		inner_c = ()=>c--
+		offsetscale_c = 1;
+		[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<boardHeight ,()=> r++];
+		[inner_a,inner_b,inner_c] = [()=> c=boardWidth-1 ,()=> c>=-1 ,()=> c--];
 	}
 	else if(direction==Moves.DOWN){
-		offsetscale_r = -1
-		outer_a = ()=>c=0
-		outer_b = ()=>c<boardWidth
-		outer_c = ()=>c++
-		inner_a = ()=>r=0
-		inner_b = ()=>r<=boardHeight
-		inner_c = ()=>r++
+		offsetscale_r = -1;
+		[outer_a,outer_b,outer_c] = [()=> c=0 ,()=> c<boardWidth ,()=> c++];
+		[inner_a,inner_b,inner_c] = [()=> r=0 ,()=> r<=boardHeight ,()=> r++];
 	}
 	else if(direction==Moves.RIGHT){
-		offsetscale_c = -1
-		outer_a = ()=>r=0
-		outer_b = ()=>r<boardHeight
-		outer_c = ()=>r++
-		inner_a = ()=>c=0
-		inner_b = ()=>c<=boardWidth
-		inner_c = ()=>c++
+		offsetscale_c = -1;
+		[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<boardWidth ,()=> r++];
+		[inner_a,inner_b,inner_c] = [()=> c=0 ,()=> c<=boardHeight ,()=> c++];
 	}
 	else{
 		throw new Error(`${direction} is not a valid move`);
 	}
-
+	console.log(outer_a,outer_b,outer_c,inner_a,inner_b,inner_c)
 	clear_unused_tiles()
 	let any_move = false
 	let delta = 0

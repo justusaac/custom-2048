@@ -72,6 +72,7 @@ body{
 	font-size: 2.5em;
 	/* property name | duration | easing function | delay */
 	transition:
+		font-size 0s linear var(--number-transition-delay),
 		background-color 0s linear var(--slide-duration),
 		color 0s linear var(--slide-duration),
 		box-shadow 0s linear var(--slide-duration),
@@ -335,7 +336,7 @@ class Simulated2048{
 		}
 		else if(move==Moves.RIGHT){
 			offsetscale_c = -1;
-			[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<this.width ,()=> r++];
+			[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<this.height ,()=> r++];
 			[inner_a,inner_b,inner_c] = [()=> c=0 ,()=> c<=this.width ,()=> c++];
 		}
 
@@ -681,13 +682,12 @@ function move(direction){
 	}
 	else if(direction==Moves.RIGHT){
 		offsetscale_c = -1;
-		[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<boardWidth ,()=> r++];
-		[inner_a,inner_b,inner_c] = [()=> c=0 ,()=> c<=boardHeight ,()=> c++];
+		[outer_a,outer_b,outer_c] = [()=> r=0 ,()=> r<boardHeight ,()=> r++];
+		[inner_a,inner_b,inner_c] = [()=> c=0 ,()=> c<=boardWidth ,()=> c++];
 	}
 	else{
 		throw new Error(`${direction} is not a valid move`);
 	}
-	console.log(outer_a,outer_b,outer_c,inner_a,inner_b,inner_c)
 	clear_unused_tiles()
 	let any_move = false
 	let delta = 0
@@ -807,13 +807,12 @@ function addTile(choice){
 	let tile = document.createElement('div')
 	tileDivs[choice.row][choice.col] = tile
 
-	numberDOMElement(tile,choice.number)
 	tile.classList.add('Slot','Tile','new')
 	tile.setAttribute('data-col',choice.col)
 	tile.setAttribute('data-row',choice.row)
 	shiftDOMElement(tile,choice.row,choice.col)
 	document.getElementById("GameBoard").appendChild(tile)
-
+	numberDOMElement(tile,choice.number)
 	checkLoss()
 }
 function lose(){
@@ -869,12 +868,22 @@ function shiftDOMElement(tile, row,col){
 function numberDOMElement(tile,new_number){
 	tile.style.setProperty('--before-number',tile.style.getPropertyValue("--number"))
 	tile.style.setProperty('--number','"'+new_number+'"')
-	//TODO shrink font-size if new_number is too long
 	tile.style.setProperty('--number-transition-delay','0s')
 	tile.style.setProperty('--before-opacity',1)
 	tile.style.setProperty('--after-opacity',0)
-	tile.offsetHeight
+	// shrink font-size if new_number is too long
+	const originalFont = parseInt(getComputedStyle(tile).fontSize);
+	for(let font = originalFont; tile.scrollWidth > tile.offsetWidth && font>=1; font--){
+		tile.style.fontSize = +font+"px";
+	}
+	let newFont = parseInt(getComputedStyle(tile).fontSize);
+	tile.style.fontSize = +originalFont+"px";
+	tile.offsetWidth
 	tile.style.setProperty('--number-transition-delay','var(--slide-duration)')
+	if(originalFont !== newFont){
+		tile.style.fontSize = +newFont+"px";
+	}
+
 	tile.style.setProperty('--before-opacity',0)
 	tile.style.setProperty('--after-opacity',1)
 
@@ -1050,18 +1059,13 @@ function adjustLayoutInput(change_height = true){
 	}
 }
 function enforceWholeNumber(event){
-	if(!(['Backspace','Delete','Tab'].includes(event.key) || !isNaN(+event.key) || (event.ctrlKey && ['a'].includes(event.key)))){
+	if(!(['Backspace','Delete','Tab'].includes(event.key) || !isNaN(+event.key) || (event.ctrlKey && ['a','c'].includes(event.key)))){
 		event.preventDefault();
 	}
 }
 function enforcePositiveFloat(event){
 	if(!['.'].includes(event.key)){
 		enforceWholeNumber(event)
-	}
-}
-function enforceFloat(event){
-	if(!['-'].includes(event.key)){
-		enforcePositiveFloat(event)
 	}
 }
 function resetLayout(){
@@ -1201,7 +1205,7 @@ window.addEventListener("load",(event)=>{
 			<th>Weight</th>
 		</tr>
 		<tr class="probability-row" id="probability-row">
-			<td><input type="number" value=0 step=1 class="probinput" autocomplete="off" onkeydown="enforceFloat(event)"></td>
+			<td><input type="number" value=0 step=1 class="probinput" autocomplete="off"></td>
 			<td><input type="number" value=0 min=0 step=1 class="probinput" autocomplete="off" onkeydown="enforcePositiveFloat(event)"></td>
 		</tr>
 		<tr id="adjust-row">
